@@ -7,45 +7,55 @@ from sklearn.metrics import accuracy_score, f1_score
 import os
 
 # --- LOAD DATA ---
-# Pastikan path ini sesuai dengan struktur folder Anda
-DATA_PATH = "heart_preprocessing" 
-
 def load_data():
-    if not os.path.exists(DATA_PATH):
-        print(f"[WARNING] Folder {DATA_PATH} tidak ditemukan, mencari di root...")
-        path = "."
-    else:
-        path = DATA_PATH
+    # Cek berbagai kemungkinan lokasi data
+    paths = [
+        "heart_failure_preprocessing", 
+        "../heart_failure_preprocessing", 
+        "data"
+    ]
+    
+    data_path = None
+    for p in paths:
+        if os.path.exists(p):
+            data_path = p
+            break
+            
+    if not data_path:
+        print("[WARNING] Folder data tidak ditemukan di path standar.")
+        # Fallback terakhir: coba cari di current directory
+        data_path = "."
         
-    X_train = pd.read_csv(os.path.join(path, "X_train.csv"))
-    y_train = pd.read_csv(os.path.join(path, "y_train.csv")).values.ravel()
-    X_test = pd.read_csv(os.path.join(path, "X_test.csv"))
-    y_test = pd.read_csv(os.path.join(path, "y_test.csv")).values.ravel()
-    return X_train, y_train, X_test, y_test
+    print(f"[INFO] Menggunakan data dari: {data_path}")
+
+    try:
+        X_train = pd.read_csv(os.path.join(data_path, "X_train.csv"))
+        y_train = pd.read_csv(os.path.join(data_path, "y_train.csv")).values.ravel()
+        X_test = pd.read_csv(os.path.join(data_path, "X_test.csv"))
+        y_test = pd.read_csv(os.path.join(data_path, "y_test.csv")).values.ravel()
+        return X_train, y_train, X_test, y_test
+    except Exception as e:
+        print(f"[ERROR] Gagal load data: {e}")
+        raise e
 
 def main():
-    # 1. Aktifkan Autolog (INI KUNCINYA)
+    # 1. Aktifkan Autolog
     mlflow.autolog()
     
-    # Set Experiment (Boleh pakai nama bebas)
-    mlflow.set_experiment("Heart_Failure_Autolog_Aditya")
-
+    # --- BAGIAN INI DIHAPUS AGAR TIDAK ERROR DI GITHUB ACTIONS ---
+    # mlflow.set_experiment("Heart_Failure_Autolog_Aditya") 
+    
     print("[INFO] Loading Data...")
     X_train, y_train, X_test, y_test = load_data()
 
+    # start_run() otomatis memakai run yang dibuat oleh 'mlflow run'
     with mlflow.start_run():
         print("[INFO] Training Model...")
-        # Model sederhana tanpa tuning rumit
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
         
-        # Evaluasi
         y_pred = model.predict(X_test)
-        acc = accuracy_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred, average='macro')
-        
-        print(f"Metrics: Acc={acc}, F1={f1}")
-        print("[SUCCESS] Training Selesai! Log tersimpan otomatis oleh Autolog.")
+        print("[SUCCESS] Training Selesai! Log tersimpan otomatis.")
 
 if __name__ == "__main__":
     main()
